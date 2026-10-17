@@ -1,0 +1,366 @@
+
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Besties of BDA 💜</title>
+  <style>
+    :root {
+      --roxo: #7c3aed;
+      --escuro: #5b21b6;
+      --lilas: #f3e8ff;
+      --fundo: #faf8ff;
+      --texto: #302442;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: Arial, sans-serif;
+    }
+
+    header {
+      background: var(--roxo);
+      color: white;
+      text-align: center;
+      padding: 30px 16px;
+    }
+
+    header h1 { margin: 0 0 8px; }
+    header p { margin: 0; color: #ede9fe; }
+
+    main {
+      width: min(650px, 92%);
+      margin: 24px auto;
+    }
+
+    .composer, .post {
+      background: white;
+      padding: 18px;
+      border: 1px solid #e9d5ff;
+      border-radius: 14px;
+      margin-bottom: 18px;
+    }
+
+    input, textarea, select, button {
+      font: inherit;
+      border-radius: 9px;
+      padding: 11px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #ddd0ef;
+      background: white;
+      color: var(--texto);
+      margin-bottom: 12px;
+    }
+
+    textarea {
+      min-height: 95px;
+      resize: vertical;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .publicar {
+      background: var(--roxo);
+      color: white;
+      width: 100%;
+    }
+
+    .publicar:hover { background: var(--escuro); }
+
+    .filtros {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .filtros button {
+      background: var(--lilas);
+      color: var(--escuro);
+    }
+
+    .filtros button.ativo {
+      background: var(--roxo);
+      color: white;
+    }
+
+    .autor {
+      color: var(--escuro);
+      font-weight: bold;
+    }
+
+    .categoria {
+      display: inline-block;
+      background: var(--lilas);
+      color: var(--escuro);
+      padding: 5px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .foto {
+      width: 100%;
+      max-height: 430px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    .acoes {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .like { background: #f3e8ff; color: #6b21a8; }
+    .apagar { background: #f4f0f7; color: #6b607a; }
+
+    .vazio {
+      text-align: center;
+      color: #796b8c;
+      padding: 25px;
+    }
+
+    footer {
+      text-align: center;
+      color: #796b8c;
+      padding: 24px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>♡ Entre Amigas</h1>
+  <p>Nosso cantinho, nossas histórias 💜</p>
+</header>
+
+<main>
+  <section class="composer">
+    <h2>Conta-nos tudo 👀</h2>
+
+    <form id="formulario">
+      <input id="nome" maxlength="40"
+        placeholder="O teu nome ou apelido" required>
+
+      <select id="categoria">
+        <option value="Foto 📸">Fotos e memórias 📸</option>
+        <option value="Fofoca 🤫">Fofocas 🤫</option>
+        <option value="Declaração 💌">Declarações 💌</option>
+      </select>
+
+      <textarea id="mensagem" maxlength="1500"
+        placeholder="Escreve aqui..." required></textarea>
+
+      <label for="imagem">Adicionar uma foto (opcional)</label>
+      <input id="imagem" type="file" accept="image/*">
+
+      <button class="publicar" type="submit">
+        Publicar 💜
+      </button>
+    </form>
+  </section>
+
+  <nav class="filtros" aria-label="Filtrar publicações">
+    <button class="ativo" data-filtro="Todas">Tudo</button>
+    <button data-filtro="Foto 📸">📸 Fotos</button>
+    <button data-filtro="Fofoca 🤫">🤫 Fofocas</button>
+    <button data-filtro="Declaração 💌">💌 Declarações</button>
+  </nav>
+
+  <section id="publicacoes" aria-live="polite"></section>
+</main>
+
+<footer>
+  Feito com amor e um bocadinho de fofoca 💜
+</footer>
+
+<script>
+  const chave = "entre-amigas-publicacoes-v1";
+  const formulario = document.getElementById("formulario");
+  const lista = document.getElementById("publicacoes");
+  const campoImagem = document.getElementById("imagem");
+
+  let filtro = "Todas";
+  let publicacoes = [];
+
+  try {
+    publicacoes = JSON.parse(localStorage.getItem(chave) || "[]");
+    if (!Array.isArray(publicacoes)) publicacoes = [];
+  } catch {
+    publicacoes = [];
+  }
+
+  function guardar() {
+    try {
+      localStorage.setItem(chave, JSON.stringify(publicacoes));
+      return true;
+    } catch {
+      alert("Não foi possível guardar. A imagem pode ser muito grande.");
+      return false;
+    }
+  }
+
+  function elemento(tag, texto, classe) {
+    const el = document.createElement(tag);
+    if (texto !== undefined) el.textContent = texto;
+    if (classe) el.className = classe;
+    return el;
+  }
+
+  function renderizar() {
+    lista.replaceChildren();
+
+    const itens = publicacoes.filter(p =>
+      filtro === "Todas" || p.categoria === filtro
+    );
+
+    if (!itens.length) {
+      lista.append(elemento(
+        "p", "Ainda não há publicações por aqui. Sê a primeira! 💜",
+        "vazio"
+      ));
+      return;
+    }
+
+    itens.forEach(p => {
+      const card = elemento("article", undefined, "post");
+      card.append(elemento("span", p.categoria, "categoria"));
+      card.append(elemento("div", "@" + p.nome, "autor"));
+
+      const mensagem = elemento("p", p.mensagem);
+      mensagem.style.whiteSpace = "pre-wrap";
+      card.append(mensagem);
+
+      if (p.imagem) {
+        const img = document.createElement("img");
+        img.src = p.imagem;
+        img.alt = "Foto partilhada por " + p.nome;
+        img.className = "foto";
+        card.append(img);
+      }
+
+      card.append(elemento(
+        "small",
+        new Date(p.data).toLocaleString("pt-PT")
+      ));
+
+      const acoes = elemento("div", undefined, "acoes");
+      const gostar = elemento("button",
+        "💜 " + p.gostos, "like");
+
+      gostar.type = "button";
+      gostar.onclick = () => {
+        p.gostos++;
+        if (guardar()) renderizar();
+        else p.gostos--;
+      };
+
+      acoes.append(gostar);
+
+      const apagar = elemento("button", "Apagar", "apagar");
+      apagar.type = "button";
+      apagar.onclick = () => {
+        if (confirm("Queres apagar esta publicação deste navegador?")) {
+          const anterior = publicacoes;
+          publicacoes = publicacoes.filter(item => item.id !== p.id);
+          if (!guardar()) publicacoes = anterior;
+          renderizar();
+        }
+      };
+
+      acoes.append(apagar);
+      card.append(acoes);
+      lista.append(card);
+    });
+  }
+
+  document.querySelectorAll("[data-filtro]").forEach(botao => {
+    botao.addEventListener("click", () => {
+      filtro = botao.dataset.filtro;
+
+      document.querySelectorAll("[data-filtro]").forEach(b =>
+        b.classList.toggle("ativo", b === botao)
+      );
+
+      renderizar();
+    });
+  });
+
+  formulario.addEventListener("submit", async evento => {
+    evento.preventDefault();
+
+    const nome = document.getElementById("nome").value.trim();
+    const mensagem = document.getElementById("mensagem").value.trim();
+    const categoria = document.getElementById("categoria").value;
+    const ficheiro = campoImagem.files[0];
+
+    if (!nome || !mensagem) return;
+
+    if (ficheiro && !ficheiro.type.startsWith("image/")) {
+      alert("Escolhe um ficheiro de imagem válido.");
+      return;
+    }
+
+    if (ficheiro && ficheiro.size > 2 * 1024 * 1024) {
+      alert("Escolhe uma foto com menos de 2 MB.");
+      return;
+    }
+
+    let imagem = "";
+
+    if (ficheiro) {
+      imagem = await new Promise((resolve, reject) => {
+        const leitor = new FileReader();
+        leitor.onload = () => resolve(leitor.result);
+        leitor.onerror = reject;
+        leitor.readAsDataURL(ficheiro);
+      }).catch(() => null);
+
+      if (!imagem) {
+        alert("Não foi possível carregar a foto.");
+        return;
+      }
+    }
+
+    const nova = {
+      id: crypto.randomUUID(),
+      nome,
+      mensagem,
+      categoria,
+      imagem,
+      gostos: 0,
+      data: new Date().toISOString()
+    };
+
+    publicacoes.unshift(nova);
+
+    if (!guardar()) {
+      publicacoes.shift();
+      return;
+    }
+
+    formulario.reset();
+    renderizar();
+  });
+
+  renderizar();
+</script>
+
+</body>
+</html>
